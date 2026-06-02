@@ -344,9 +344,13 @@
             </div>
             <div class="controls-section">
                 <div class="badge-live" id="live-indicator">
-                    <div class="dot"></div>
-                    <span>即時連線中</span>
+                    <div class="dot" id="live-dot"></div>
+                    <span id="live-text">即時連線中</span>
                 </div>
+                <button class="btn" id="pause-btn" style="border-color: rgba(245, 158, 11, 0.3);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="pause-icon"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    <span id="pause-text">暫停更新</span>
+                </button>
                 <button class="btn" id="refresh-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                     手動重新整理
@@ -442,6 +446,7 @@
 
         let currentChartObj = null;
         let powerChartObj = null;
+        let isPaused = false;
 
         // Initialize empty charts
         function initCharts() {
@@ -476,7 +481,9 @@
                         },
                         y: {
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            title: { display: true, text: '安培 (A)' }
+                            title: { display: true, text: '安培 (A)' },
+                            suggestedMin: 0,
+                            grace: '15%'
                         }
                     },
                     plugins: {
@@ -516,7 +523,9 @@
                         },
                         y: {
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            title: { display: true, text: '瓦特 (W)' }
+                            title: { display: true, text: '瓦特 (W)' },
+                            suggestedMin: 0,
+                            grace: '15%'
                         }
                     },
                     plugins: {
@@ -601,12 +610,60 @@
             updateDashboard();
         });
 
+        // Setup pause/resume event
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            isPaused = !isPaused;
+            const pauseBtn = document.getElementById('pause-btn');
+            const pauseText = document.getElementById('pause-text');
+            const pauseIcon = document.getElementById('pause-icon');
+            const liveIndicator = document.getElementById('live-indicator');
+            const liveDot = document.getElementById('live-dot');
+            const liveText = document.getElementById('live-text');
+
+            if (isPaused) {
+                // UI state for Paused
+                pauseBtn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                pauseBtn.style.color = 'var(--accent-green)';
+                pauseText.innerText = '恢復更新';
+                // Change icon to play (triangle)
+                pauseIcon.innerHTML = '<path d="M8 5v14l11-7z"></path>';
+                
+                // Live indicator state
+                liveIndicator.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+                liveIndicator.style.background = 'rgba(239, 68, 68, 0.1)';
+                liveIndicator.style.color = '#ef4444';
+                liveDot.style.backgroundColor = '#ef4444';
+                liveText.innerText = '更新已暫停';
+            } else {
+                // UI state for Live
+                pauseBtn.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                pauseBtn.style.color = 'var(--text-primary)';
+                pauseText.innerText = '暫停更新';
+                // Change icon to pause (two vertical bars)
+                pauseIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+                
+                // Live indicator state
+                liveIndicator.style.borderColor = 'rgba(16, 185, 129, 0.25)';
+                liveIndicator.style.background = 'rgba(16, 185, 129, 0.1)';
+                liveIndicator.style.color = 'var(--accent-green)';
+                liveDot.style.backgroundColor = 'var(--accent-green)';
+                liveText.innerText = '即時連線中';
+                
+                // Refresh immediately when resuming
+                updateDashboard();
+            }
+        });
+
         // Initialize and poll
         window.addEventListener('DOMContentLoaded', () => {
             initCharts();
             updateDashboard();
             // Poll every 3 seconds for live dashboard updates
-            setInterval(updateDashboard, 3000);
+            setInterval(() => {
+                if (!isPaused) {
+                    updateDashboard();
+                }
+            }, 3000);
         });
     </script>
 </body>

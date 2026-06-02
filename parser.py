@@ -5,9 +5,9 @@ import serial
 from datetime import datetime
 import db
 
-# Regex to match: 09:49:15.511 -> Current_RMS(A):0.050,Apparent_Power(W):5.5
+# Regex to match optional time prefix: [09:49:15.511 -> ] Current_RMS(A):0.050,Apparent_Power(W):5.5
 LOG_PATTERN = re.compile(
-    r"(?P<time>\d{2}:\d{2}:\d{2}\.\d{3})\s*->\s*Current_RMS\(A\):(?P<current>[\d\.]+),Apparent_Power\(W\):(?P<power>[\d\.]+)"
+    r"(?:(?P<time>\d{2}:\d{2}:\d{2}\.\d{3})\s*->\s*)?Current_RMS\(A\):(?P<current>[\d\.]+),Apparent_Power\(W\):(?P<power>[\d\.]+)"
 )
 
 def parse_line(line):
@@ -40,6 +40,8 @@ def process_log_file(file_path, target_date=None, db_path=db.DEFAULT_DB_PATH):
             parsed = parse_line(line)
             if parsed:
                 time_str, current, power = parsed
+                if not time_str:
+                    time_str = datetime.now().strftime("%H:%M:%S.%f")[:-3]
                 # Combine date and time
                 timestamp = f"{target_date} {time_str}"
                 db.insert_reading(timestamp, current, power, db_path=db_path)
@@ -78,7 +80,10 @@ def read_serial_port(port, baudrate, db_path=db.DEFAULT_DB_PATH):
                 parsed = parse_line(line)
                 if parsed:
                     time_str, current, power = parsed
-                    current_date = datetime.now().strftime("%Y-%m-%d")
+                    now = datetime.now()
+                    current_date = now.strftime("%Y-%m-%d")
+                    if not time_str:
+                        time_str = now.strftime("%H:%M:%S.%f")[:-3]
                     timestamp = f"{current_date} {time_str}"
                     
                     db.insert_reading(timestamp, current, power, db_path=db_path)
